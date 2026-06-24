@@ -38,6 +38,28 @@
     showToast.tid = setTimeout(() => els.toast.classList.remove('show'), 1700);
   }
 
+  function setOutputText(text){
+    if ('value' in els.outputPrompt) els.outputPrompt.value = text;
+    else els.outputPrompt.textContent = text || '';
+  }
+
+  function getOutputText(){
+    if ('value' in els.outputPrompt) return els.outputPrompt.value;
+    return (els.outputPrompt.innerText || els.outputPrompt.textContent || '').replace(/ /g, ' ');
+  }
+
+  function focusOutputEnd(){
+    els.outputPrompt.focus();
+    if (!('value' in els.outputPrompt) && window.getSelection && document.createRange) {
+      const range = document.createRange();
+      range.selectNodeContents(els.outputPrompt);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function unique(list){ return [...new Set(list.filter(Boolean))]; }
   function numberOrBlank(value){ const n = Number(value); return Number.isFinite(n) && n > 0 ? n : ''; }
@@ -110,7 +132,7 @@
 
   function updateOutputFromSelected(force = false){
     if (force || !state.outputManualEdit) {
-      els.outputPrompt.value = buildPrompt();
+      setOutputText(buildPrompt());
       state.outputManualEdit = false;
     }
   }
@@ -398,8 +420,15 @@
   els.clearSelectedBtn.addEventListener('click', () => { state.selected = []; renderSelected(); });
   els.copySelectedBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(buildPrompt()); showToast('已複製已選 Tag'); });
   els.outputPrompt.addEventListener('input', () => { state.outputManualEdit = true; });
-  els.buildBtn.addEventListener('click', () => { updateOutputFromSelected(true); showToast('已重新產生輸出'); });
-  els.copyOutputBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(els.outputPrompt.value || buildPrompt()); showToast('已複製 Prompt'); });
+  els.outputPrompt.addEventListener('paste', (e) => {
+    if ('value' in els.outputPrompt) return;
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+    state.outputManualEdit = true;
+  });
+  els.buildBtn.addEventListener('click', () => { updateOutputFromSelected(true); focusOutputEnd(); showToast('已重新產生輸出'); });
+  els.copyOutputBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(getOutputText() || buildPrompt()); showToast('已複製 Prompt'); });
   els.resetBtn.addEventListener('click', () => { state.selected=[]; state.query=''; state.major='全部'; state.section='全部'; state.outputManualEdit=false; els.searchInput.value=''; initFilters(); renderEntries(); renderSelected(); });
   els.randomBtn.addEventListener('click', () => { const list = filteredEntries(); if(!list.length) return; const e = list[Math.floor(Math.random()*list.length)]; addTag(e.title, e.main_tag || e.raw, e.start_page, e.id); });
   els.selectFirstVisible.addEventListener('click', () => { const e = filteredEntries()[0]; if(e) addTag(e.title, e.main_tag || e.raw, e.start_page, e.id); });

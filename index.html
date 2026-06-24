@@ -101,7 +101,7 @@
 
         <section class="side-block output-block">
           <h2>輸出</h2>
-          <textarea id="outputPrompt" spellcheck="false" aria-label="可手動修改的輸出 Prompt" placeholder="輸出的 Prompt 會在這裡顯示，可直接手動修改"></textarea>
+          <div id="outputPrompt" class="prompt-editor" contenteditable="true" role="textbox" aria-multiline="true" tabindex="0" spellcheck="false" data-placeholder="輸出的 Prompt 會在這裡顯示，可直接手動修改"></div>
           <div class="button-grid bottom">
             <button id="buildBtn" class="primary">Output</button>
             <button id="resetBtn">Reset</button>
