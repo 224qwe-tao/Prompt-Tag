@@ -6,7 +6,7 @@
 
 - `index.html`：網站入口
 - `styles.css`：UI 樣式
-- `app.js`：搜尋、輸出、複製、字典新增/修改功能
+- `app.js`：搜尋、輸出、手動修改輸出格、複製、字典新增/修改功能
 - `tags.js`：由 PDF 解析出的字典資料
 - `.nojekyll`：讓 GitHub Pages 直接提供靜態檔案
 
@@ -15,7 +15,8 @@
 1. 直接開啟 `index.html`。
 2. 搜尋或篩選條目。
 3. 點擊卡片上的「添加」把主要 Tag 加入輸出。
-4. 在右側 `Custom Settings` 調整輸出處理。
+4. 輸出格可直接手動修改；按 `Output` 會重新根據已選 Tag 產生 Prompt。
+5. 在右側 `Custom Settings` 調整輸出處理。
 5. 點擊 `Output` 或 `複製 Prompt`。
 
 ## 新增與修改字典條目

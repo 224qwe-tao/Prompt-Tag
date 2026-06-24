@@ -9,7 +9,8 @@
     query: '',
     suffix: '',
     local: { edits: {}, custom: [] },
-    currentDetailId: null
+    currentDetailId: null,
+    outputManualEdit: false
   };
   let data = [];
 
@@ -107,12 +108,19 @@
     return tags.join(', ');
   }
 
+  function updateOutputFromSelected(force = false){
+    if (force || !state.outputManualEdit) {
+      els.outputPrompt.value = buildPrompt();
+      state.outputManualEdit = false;
+    }
+  }
+
   function renderSelected(){
     els.selectedTags.innerHTML = '';
     if (!state.selected.length) {
       els.selectedTags.classList.add('empty');
       els.selectedTags.innerHTML = '<span>尚未添加，點擊下方條目或輸入自訂 Tag。</span>';
-      els.outputPrompt.value = buildPrompt();
+      updateOutputFromSelected();
       return;
     }
     els.selectedTags.classList.remove('empty');
@@ -124,7 +132,7 @@
       chip.addEventListener('click', () => { state.selected.splice(i,1); renderSelected(); });
       els.selectedTags.appendChild(chip);
     });
-    els.outputPrompt.value = buildPrompt();
+    updateOutputFromSelected();
   }
 
   function addTag(label, text, page, id){
@@ -389,9 +397,10 @@
   els.sectionSelect.addEventListener('change', e => { state.section = e.target.value; renderEntries(); });
   els.clearSelectedBtn.addEventListener('click', () => { state.selected = []; renderSelected(); });
   els.copySelectedBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(buildPrompt()); showToast('已複製已選 Tag'); });
-  els.buildBtn.addEventListener('click', () => { els.outputPrompt.value = buildPrompt(); showToast('已輸出'); });
+  els.outputPrompt.addEventListener('input', () => { state.outputManualEdit = true; });
+  els.buildBtn.addEventListener('click', () => { updateOutputFromSelected(true); showToast('已重新產生輸出'); });
   els.copyOutputBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(els.outputPrompt.value || buildPrompt()); showToast('已複製 Prompt'); });
-  els.resetBtn.addEventListener('click', () => { state.selected=[]; state.query=''; state.major='全部'; state.section='全部'; els.searchInput.value=''; initFilters(); renderEntries(); renderSelected(); });
+  els.resetBtn.addEventListener('click', () => { state.selected=[]; state.query=''; state.major='全部'; state.section='全部'; state.outputManualEdit=false; els.searchInput.value=''; initFilters(); renderEntries(); renderSelected(); });
   els.randomBtn.addEventListener('click', () => { const list = filteredEntries(); if(!list.length) return; const e = list[Math.floor(Math.random()*list.length)]; addTag(e.title, e.main_tag || e.raw, e.start_page, e.id); });
   els.selectFirstVisible.addEventListener('click', () => { const e = filteredEntries()[0]; if(e) addTag(e.title, e.main_tag || e.raw, e.start_page, e.id); });
   els.selectCategoryOnly.addEventListener('click', () => { els.searchInput.value=''; state.query=''; renderEntries(); showToast('已套用目前分類'); });

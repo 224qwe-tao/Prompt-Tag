@@ -101,13 +101,13 @@
 
         <section class="side-block output-block">
           <h2>輸出</h2>
-          <textarea id="outputPrompt" readonly placeholder="輸出的 Prompt 會在這裡顯示"></textarea>
+          <textarea id="outputPrompt" spellcheck="false" aria-label="可手動修改的輸出 Prompt" placeholder="輸出的 Prompt 會在這裡顯示，可直接手動修改"></textarea>
           <div class="button-grid bottom">
             <button id="buildBtn" class="primary">Output</button>
             <button id="resetBtn">Reset</button>
           </div>
           <button id="copyOutputBtn" class="wide secondary">複製 Prompt</button>
-          <p class="hint">點擊卡片「添加」會把主要 Tag 加入輸出；點擊「查看」可閱讀原始欄位；點擊「修改」可編輯字典條目。</p>
+          <p class="hint">輸出格可直接手動修改；點擊 Output 會重新根據已選 Tag 產生 Prompt；複製會使用目前輸出格內容。</p>
         </section>
       </div>
     </aside>
