@@ -66,10 +66,12 @@
         <section class="side-block">
           <h2>Custom Settings</h2>
           <h3>輸出時處理</h3>
-          <label class="check"><input type="checkbox" id="qualityToggle" checked /><span>加入品質詞</span></label>
-          <label class="check"><input type="checkbox" id="underscoreToggle" checked /><span>下劃線改空格</span></label>
-          <label class="check"><input type="checkbox" id="dedupeToggle" checked /><span>移除重複 Tag</span></label>
-          <label class="check"><input type="checkbox" id="pageToggle" /><span>附加來源頁碼註記</span></label>
+          <div class="setting-list">
+            <label class="check"><input type="checkbox" id="qualityToggle" checked /><span>加入品質詞</span></label>
+            <label class="check"><input type="checkbox" id="underscoreToggle" checked /><span>下劃線改空格</span></label>
+            <label class="check"><input type="checkbox" id="dedupeToggle" checked /><span>移除重複 Tag</span></label>
+            <label class="check"><input type="checkbox" id="pageToggle" /><span>附加來源頁碼註記</span></label>
+          </div>
 
           <h3>Append to Each Tag (Fixed)</h3>
           <div class="suffix-row">
@@ -80,6 +82,20 @@
           </div>
         </section>
 
+        <section class="side-block manage-block">
+          <h2>字典管理</h2>
+          <div class="button-grid">
+            <button id="addEntryBtn" class="primary">增加字典條目</button>
+            <button id="exportDataBtn">匯出修改</button>
+          </div>
+          <div class="button-grid compact-top">
+            <label class="file-btn" for="importDataInput">匯入修改</label>
+            <input id="importDataInput" type="file" accept="application/json,.json" />
+            <button id="clearLocalDataBtn">清除本機修改</button>
+          </div>
+          <p class="hint">新增及修改會儲存在目前瀏覽器。上傳到 GitHub 後仍可使用；要讓所有訪客看到同一份修改，請把匯出的 JSON 或更新後資料 commit 到 repository。</p>
+        </section>
+
         <section class="side-block output-block">
           <h2>輸出</h2>
           <textarea id="outputPrompt" readonly placeholder="輸出的 Prompt 會在這裡顯示"></textarea>
@@ -88,7 +104,7 @@
             <button id="resetBtn">Reset</button>
           </div>
           <button id="copyOutputBtn" class="wide secondary">複製 Prompt</button>
-          <p class="hint">點擊卡片「添加」會把主要 Tag 加入輸出；點擊「查看」可閱讀原始欄位。</p>
+          <p class="hint">點擊卡片「添加」會把主要 Tag 加入輸出；點擊「查看」可閱讀原始欄位；點擊「修改」可編輯字典條目。</p>
         </section>
       </div>
     </aside>
@@ -100,7 +116,10 @@
         <h2 id="detailTitle"></h2>
         <p id="detailMeta" class="subtitle"></p>
       </div>
-      <button id="closeDialog" class="ghost-btn">關閉</button>
+      <div class="dialog-tools">
+        <button id="detailEditEntry" class="ghost-btn">修改條目</button>
+        <button id="closeDialog" class="ghost-btn">關閉</button>
+      </div>
     </div>
     <div class="detail-grid">
       <section>
@@ -118,6 +137,73 @@
         <pre id="detailNotes"></pre>
       </section>
     </div>
+  </dialog>
+
+  <dialog id="entryDialog" class="dialog edit-dialog">
+    <form id="entryForm" class="entry-form">
+      <div class="dialog-head">
+        <div>
+          <h2 id="entryDialogTitle">增加字典條目</h2>
+          <p class="subtitle">可新增自訂條目，或修改現有條目的分類、Tag、負面 Tag 與備註。</p>
+        </div>
+        <div class="dialog-tools">
+          <button type="button" id="resetEntryBtn" class="ghost-btn">還原原始條目</button>
+          <button type="button" id="closeEntryDialog" class="ghost-btn">關閉</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="editEntryId" />
+      <div class="form-grid">
+        <label class="field full">
+          <span>條目名稱</span>
+          <input id="editTitle" required placeholder="例如：自訂構圖" />
+        </label>
+        <label class="field">
+          <span>主分類</span>
+          <input id="editMajor" list="majorOptions" placeholder="例如：六、单女" />
+        </label>
+        <label class="field">
+          <span>子分類</span>
+          <input id="editSection" list="sectionOptions" placeholder="例如：（九）杂项" />
+        </label>
+        <label class="field">
+          <span>作者</span>
+          <input id="editAuthor" placeholder="可留空" />
+        </label>
+        <div class="form-grid nested">
+          <label class="field">
+            <span>開始頁碼</span>
+            <input id="editStartPage" type="number" min="1" placeholder="可留空" />
+          </label>
+          <label class="field">
+            <span>結束頁碼</span>
+            <input id="editEndPage" type="number" min="1" placeholder="可留空" />
+          </label>
+        </div>
+        <label class="field full">
+          <span>主要 Tag</span>
+          <textarea id="editMainTag" required placeholder="1girl, solo, ..."></textarea>
+        </label>
+        <label class="field full">
+          <span>負面 Tag</span>
+          <textarea id="editNegativeTag" placeholder="可留空"></textarea>
+        </label>
+        <label class="field full">
+          <span>備註</span>
+          <textarea id="editNotes" placeholder="可留空"></textarea>
+        </label>
+        <label class="field full">
+          <span>原始摘錄</span>
+          <textarea id="editRaw" placeholder="可留空；用於保留 PDF 原文或自訂說明"></textarea>
+        </label>
+      </div>
+      <datalist id="majorOptions"></datalist>
+      <datalist id="sectionOptions"></datalist>
+      <div class="form-actions">
+        <button type="submit" class="primary">儲存條目</button>
+        <button type="button" id="cancelEntryBtn">取消</button>
+      </div>
+    </form>
   </dialog>
 
   <div id="toast" class="toast" aria-live="polite"></div>

@@ -1,30 +1,42 @@
-# NovelAI Prompt Tag 字典網站
+# NovelAI Prompt Tag Dictionary
 
-這是根據使用者提供的 PDF 文字內容自動整理的本機靜態網站。UI 參考 `https://nyk-sm.com/aegigoe/` 的雙欄、膠囊按鈕與右側設定面板。
-
-## 使用方法
-
-1. 解壓縮 ZIP。
-2. 直接用瀏覽器開啟 `index.html`。
-3. 可搜尋、按分類篩選、查看條目、加入 Prompt、複製輸出。
-
-## GitHub Pages 上傳方法
-
-1. 建立一個新的 GitHub repository。
-2. 將 `index.html`、`styles.css`、`app.js`、`tags.js`、`README.md`、`.nojekyll` 放在 repository 根目錄。
-3. 到 repository 的 **Settings → Pages**，Source 選擇 **Deploy from a branch**，Branch 選擇 `main` / `/root`。
-4. 儲存後等待 GitHub Pages 完成部署。
-
-## 整理結果
-
-- PDF 解析條目：287
-- 網站收錄條目：258
-- 預設排除高風險條目：29
-- PDF 原圖：未導入
+靜態版 NovelAI Prompt Tag 字典網站，可直接部署到 GitHub Pages。
 
 ## 檔案
 
-- `index.html`：主頁面
-- `styles.css`：模仿截圖風格的 UI 樣式
-- `app.js`：搜尋、分類、輸出、複製等互動邏輯
-- `tags.js`：由 PDF 解析並整理的資料
+- `index.html`：網站入口
+- `styles.css`：UI 樣式
+- `app.js`：搜尋、輸出、複製、字典新增/修改功能
+- `tags.js`：由 PDF 解析出的字典資料
+- `.nojekyll`：讓 GitHub Pages 直接提供靜態檔案
+
+## 使用方式
+
+1. 直接開啟 `index.html`。
+2. 搜尋或篩選條目。
+3. 點擊卡片上的「添加」把主要 Tag 加入輸出。
+4. 在右側 `Custom Settings` 調整輸出處理。
+5. 點擊 `Output` 或 `複製 Prompt`。
+
+## 新增與修改字典條目
+
+網站已加入兩種管理功能：
+
+- `增加字典條目`：新增自訂條目。
+- 卡片上的 `修改` 或詳情視窗的 `修改條目`：修改現有條目。
+
+新增與修改會儲存在目前瀏覽器的 `localStorage`，因此可在 GitHub Pages 靜態網站上正常使用，但只會影響目前瀏覽器。若想讓所有訪客都看到同一份修改，請使用 `匯出修改`，再把匯出的 JSON 內容整合到 `tags.js` 或另外提交到 repository。
+
+## GitHub Pages 部署
+
+1. 建立一個新的 GitHub repository。
+2. 將 ZIP 內全部檔案解壓到 repository 根目錄。
+3. Commit 並 push 到 GitHub。
+4. 到 `Settings` → `Pages`。
+5. 在 `Build and deployment` 選擇 `Deploy from a branch`。
+6. Branch 選擇 `main`，資料夾選擇 `/root`。
+7. 儲存後等待 GitHub Pages 完成部署。
+
+## 備註
+
+PDF 原圖沒有導入，網站只使用解析出的文字型 Prompt Tag 條目。預設排除的高風險條目沒有放入 `tags.js`。
