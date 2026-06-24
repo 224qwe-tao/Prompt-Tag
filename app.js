@@ -8,9 +8,10 @@
     section: '全部',
     query: '',
     suffix: '',
-    local: { edits: {}, custom: [] },
+    local: { edits: {}, custom: [], settings: {} },
     currentDetailId: null,
-    outputManualEdit: false
+    outputManualEdit: false,
+    outputFontSize: 13
   };
   let data = [];
 
@@ -19,16 +20,18 @@
     metaLine: $('metaLine'), customInput: $('customInput'), addCustomBtn: $('addCustomBtn'),
     searchInput: $('searchInput'), majorSelect: $('majorSelect'), sectionSelect: $('sectionSelect'), categoryChips: $('categoryChips'),
     selectedTags: $('selectedTags'), entryList: $('entryList'), clearSelectedBtn: $('clearSelectedBtn'), copySelectedBtn: $('copySelectedBtn'),
-    randomBtn: $('randomBtn'), outputPrompt: $('outputPrompt'), buildBtn: $('buildBtn'), resetBtn: $('resetBtn'), copyOutputBtn: $('copyOutputBtn'),
+    randomBtn: $('randomBtn'), outputPrompt: $('outputPrompt'), outputZoomOut: $('outputZoomOut'), outputZoomReset: $('outputZoomReset'), outputZoomIn: $('outputZoomIn'), buildBtn: $('buildBtn'), resetBtn: $('resetBtn'), copyOutputBtn: $('copyOutputBtn'),
     qualityToggle: $('qualityToggle'), underscoreToggle: $('underscoreToggle'), dedupeToggle: $('dedupeToggle'), pageToggle: $('pageToggle'),
     selectFirstVisible: $('selectFirstVisible'), selectCategoryOnly: $('selectCategoryOnly'), themeBtn: $('themeBtn'), toast: $('toast'),
-    addEntryBtn: $('addEntryBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'), clearLocalDataBtn: $('clearLocalDataBtn'),
+    addEntryBtn: $('addEntryBtn'), editCategoriesBtn: $('editCategoriesBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'), clearLocalDataBtn: $('clearLocalDataBtn'),
     detailDialog: $('detailDialog'), closeDialog: $('closeDialog'), detailEditEntry: $('detailEditEntry'), detailTitle: $('detailTitle'), detailMeta: $('detailMeta'), detailMain: $('detailMain'),
     detailNegative: $('detailNegative'), detailNotes: $('detailNotes'), detailAddMain: $('detailAddMain'), detailCopyNegative: $('detailCopyNegative'),
     entryDialog: $('entryDialog'), entryForm: $('entryForm'), entryDialogTitle: $('entryDialogTitle'), closeEntryDialog: $('closeEntryDialog'), cancelEntryBtn: $('cancelEntryBtn'), resetEntryBtn: $('resetEntryBtn'),
     editEntryId: $('editEntryId'), editTitle: $('editTitle'), editMajor: $('editMajor'), editSection: $('editSection'), editAuthor: $('editAuthor'),
     editStartPage: $('editStartPage'), editEndPage: $('editEndPage'), editMainTag: $('editMainTag'), editNegativeTag: $('editNegativeTag'), editNotes: $('editNotes'), editRaw: $('editRaw'),
-    majorOptions: $('majorOptions'), sectionOptions: $('sectionOptions')
+    majorOptions: $('majorOptions'), sectionOptions: $('sectionOptions'),
+    categoryDialog: $('categoryDialog'), categoryForm: $('categoryForm'), closeCategoryDialog: $('closeCategoryDialog'), cancelCategoryBtn: $('cancelCategoryBtn'),
+    categoryType: $('categoryType'), categoryFrom: $('categoryFrom'), categoryTo: $('categoryTo'), categoryList: $('categoryList')
   };
 
   function showToast(msg){
@@ -60,6 +63,17 @@
     }
   }
 
+  function applyOutputFontSize(size, persist = true){
+    const next = Math.max(11, Math.min(28, Number(size) || 13));
+    state.outputFontSize = next;
+    document.documentElement.style.setProperty('--output-font-size', `${next}px`);
+    if (persist) {
+      state.local.settings = state.local.settings || {};
+      state.local.settings.outputFontSize = next;
+      saveLocalData();
+    }
+  }
+
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function unique(list){ return [...new Set(list.filter(Boolean))]; }
   function numberOrBlank(value){ const n = Number(value); return Number.isFinite(n) && n > 0 ? n : ''; }
@@ -74,10 +88,12 @@
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       state.local = {
         edits: parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {},
-        custom: Array.isArray(parsed.custom) ? parsed.custom : []
+        custom: Array.isArray(parsed.custom) ? parsed.custom : [],
+        settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {}
       };
+      if (state.local.settings.outputFontSize) state.outputFontSize = state.local.settings.outputFontSize;
     } catch (err) {
-      state.local = { edits: {}, custom: [] };
+      state.local = { edits: {}, custom: [], settings: {} };
     }
   }
 
@@ -356,7 +372,8 @@
       source_name: meta.source_name || 'PDF',
       exported_at: new Date().toISOString(),
       edits: state.local.edits,
-      custom: state.local.custom
+      custom: state.local.custom,
+      settings: state.local.settings || {}
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
@@ -378,7 +395,10 @@
         const parsed = JSON.parse(reader.result);
         const edits = parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {};
         const custom = Array.isArray(parsed.custom) ? parsed.custom : [];
+        const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
         state.local.edits = {...state.local.edits, ...edits};
+        state.local.settings = {...(state.local.settings || {}), ...settings};
+        if (state.local.settings.outputFontSize) applyOutputFontSize(state.local.settings.outputFontSize, false);
         const customMap = new Map(state.local.custom.map(e => [e.id, e]));
         custom.forEach(e => { if (e && e.id) customMap.set(e.id, e); });
         state.local.custom = [...customMap.values()];
@@ -398,13 +418,85 @@
   function clearLocalData(){
     const ok = confirm('確定清除本機新增與修改？此操作不會影響原始 tags.js。');
     if (!ok) return;
-    state.local = { edits: {}, custom: [] };
+    state.local = { edits: {}, custom: [], settings: {} };
+    applyOutputFontSize(13, false);
     saveLocalData();
     hydrateData();
     initFilters();
     renderEntries();
     renderSelected();
     showToast('已清除本機修改');
+  }
+
+  function sanitizeEntry(entry){
+    const {isCustom, isEdited, ...clean} = entry || {};
+    return clean;
+  }
+
+  function getCategoryCounts(type){
+    const counts = new Map();
+    data.forEach(e => {
+      const name = (e[type] || '未分類').trim() || '未分類';
+      counts.set(name, (counts.get(name) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a,b) => a[0].localeCompare(b[0], 'zh-Hant'));
+  }
+
+  function renderCategoryEditor(){
+    const type = els.categoryType.value || 'major';
+    const counts = getCategoryCounts(type);
+    els.categoryFrom.innerHTML = counts.map(([name, count]) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}（${count}）</option>`).join('');
+    if (!els.categoryFrom.value && counts[0]) els.categoryFrom.value = counts[0][0];
+    const selected = els.categoryFrom.value || (counts[0] ? counts[0][0] : '');
+    els.categoryTo.value = selected;
+    els.categoryList.innerHTML = counts.map(([name, count]) => `
+      <button type="button" class="category-pill" data-name="${escapeHtml(name)}">
+        <span>${escapeHtml(name)}</span><small>${count} 條</small>
+      </button>`).join('') || '<p class="muted">暫無分類。</p>';
+    els.categoryList.querySelectorAll('.category-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        els.categoryFrom.value = btn.dataset.name;
+        els.categoryTo.value = btn.dataset.name;
+      });
+    });
+  }
+
+  function openCategoryEditor(){
+    renderCategoryEditor();
+    els.categoryDialog.showModal();
+  }
+
+  function applyCategoryRename(){
+    const type = els.categoryType.value === 'section' ? 'section' : 'major';
+    const oldName = (els.categoryFrom.value || '').trim();
+    const newName = (els.categoryTo.value || '').trim();
+    if (!oldName) return showToast('請選擇目前分類');
+    if (!newName) return showToast('請輸入新分類名稱');
+    if (oldName === newName) return showToast('分類名稱沒有變更');
+
+    let changed = 0;
+    data.forEach(entry => {
+      const currentName = (entry[type] || '未分類').trim() || '未分類';
+      if (currentName !== oldName) return;
+      changed += 1;
+      if (entry.isCustom) {
+        const idx = state.local.custom.findIndex(e => e.id === entry.id);
+        if (idx >= 0) state.local.custom[idx] = {...state.local.custom[idx], [type]: newName};
+      } else {
+        state.local.edits[entry.id] = sanitizeEntry({...entry, [type]: newName});
+      }
+    });
+
+    if (!changed) return showToast('沒有條目使用此分類');
+    if (type === 'major' && state.major === oldName) state.major = newName;
+    if (type === 'section' && state.section === oldName) state.section = newName;
+    saveLocalData();
+    hydrateData();
+    initFilters();
+    renderEntries();
+    renderSelected();
+    renderCategoryEditor();
+    showToast(`已更新 ${changed} 個條目的分類`);
   }
 
   function refreshOutputOptions(){ renderSelected(); }
@@ -427,6 +519,9 @@
     document.execCommand('insertText', false, text);
     state.outputManualEdit = true;
   });
+  els.outputZoomOut.addEventListener('click', () => { applyOutputFontSize(state.outputFontSize - 1); focusOutputEnd(); });
+  els.outputZoomReset.addEventListener('click', () => { applyOutputFontSize(13); focusOutputEnd(); });
+  els.outputZoomIn.addEventListener('click', () => { applyOutputFontSize(state.outputFontSize + 1); focusOutputEnd(); });
   els.buildBtn.addEventListener('click', () => { updateOutputFromSelected(true); focusOutputEnd(); showToast('已重新產生輸出'); });
   els.copyOutputBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(getOutputText() || buildPrompt()); showToast('已複製 Prompt'); });
   els.resetBtn.addEventListener('click', () => { state.selected=[]; state.query=''; state.major='全部'; state.section='全部'; state.outputManualEdit=false; els.searchInput.value=''; initFilters(); renderEntries(); renderSelected(); });
@@ -445,6 +540,12 @@
   }));
 
   els.addEntryBtn.addEventListener('click', () => openEntryEditor(null));
+  els.editCategoriesBtn.addEventListener('click', openCategoryEditor);
+  els.categoryType.addEventListener('change', renderCategoryEditor);
+  els.categoryFrom.addEventListener('change', () => { els.categoryTo.value = els.categoryFrom.value; });
+  els.categoryForm.addEventListener('submit', e => { e.preventDefault(); applyCategoryRename(); });
+  els.closeCategoryDialog.addEventListener('click', () => els.categoryDialog.close());
+  els.cancelCategoryBtn.addEventListener('click', () => els.categoryDialog.close());
   els.closeEntryDialog.addEventListener('click', () => els.entryDialog.close());
   els.cancelEntryBtn.addEventListener('click', () => els.entryDialog.close());
   els.entryForm.addEventListener('submit', e => { e.preventDefault(); saveEntry(collectEntryFromForm()); });
@@ -454,6 +555,7 @@
   els.clearLocalDataBtn.addEventListener('click', clearLocalData);
 
   loadLocalData();
+  applyOutputFontSize(state.outputFontSize, false);
   hydrateData();
   initFilters();
   renderEntries();
