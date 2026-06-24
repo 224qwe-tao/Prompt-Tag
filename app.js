@@ -8,7 +8,7 @@
     section: '全部',
     query: '',
     suffix: '',
-    local: { edits: {}, custom: [], settings: {} },
+    local: { edits: {}, custom: [], settings: {}, deleted: [] },
     currentDetailId: null,
     outputManualEdit: false,
     outputFontSize: 13
@@ -20,10 +20,10 @@
     metaLine: $('metaLine'), customInput: $('customInput'), addCustomBtn: $('addCustomBtn'),
     searchInput: $('searchInput'), majorSelect: $('majorSelect'), sectionSelect: $('sectionSelect'), categoryChips: $('categoryChips'),
     selectedTags: $('selectedTags'), entryList: $('entryList'), clearSelectedBtn: $('clearSelectedBtn'), copySelectedBtn: $('copySelectedBtn'),
-    randomBtn: $('randomBtn'), outputPrompt: $('outputPrompt'), outputZoomOut: $('outputZoomOut'), outputZoomReset: $('outputZoomReset'), outputZoomIn: $('outputZoomIn'), buildBtn: $('buildBtn'), resetBtn: $('resetBtn'), copyOutputBtn: $('copyOutputBtn'),
+    randomBtn: $('randomBtn'), outputPrompt: $('outputPrompt'), outputPromptLarge: $('outputPromptLarge'), outputDialog: $('outputDialog'), outputFullscreenBtn: $('outputFullscreenBtn'), outputFullscreenClose: $('outputFullscreenClose'), outputZoomOut: $('outputZoomOut'), outputZoomReset: $('outputZoomReset'), outputZoomIn: $('outputZoomIn'), buildBtn: $('buildBtn'), resetBtn: $('resetBtn'), copyOutputBtn: $('copyOutputBtn'),
     qualityToggle: $('qualityToggle'), underscoreToggle: $('underscoreToggle'), dedupeToggle: $('dedupeToggle'), pageToggle: $('pageToggle'),
     selectFirstVisible: $('selectFirstVisible'), selectCategoryOnly: $('selectCategoryOnly'), themeBtn: $('themeBtn'), toast: $('toast'),
-    addEntryBtn: $('addEntryBtn'), editCategoriesBtn: $('editCategoriesBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'), clearLocalDataBtn: $('clearLocalDataBtn'),
+    addEntryBtn: $('addEntryBtn'), editCategoriesBtn: $('editCategoriesBtn'), deleteCategoryEntriesBtn: $('deleteCategoryEntriesBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'), clearLocalDataBtn: $('clearLocalDataBtn'),
     detailDialog: $('detailDialog'), closeDialog: $('closeDialog'), detailEditEntry: $('detailEditEntry'), detailTitle: $('detailTitle'), detailMeta: $('detailMeta'), detailMain: $('detailMain'),
     detailNegative: $('detailNegative'), detailNotes: $('detailNotes'), detailAddMain: $('detailAddMain'), detailCopyNegative: $('detailCopyNegative'),
     entryDialog: $('entryDialog'), entryForm: $('entryForm'), entryDialogTitle: $('entryDialogTitle'), closeEntryDialog: $('closeEntryDialog'), cancelEntryBtn: $('cancelEntryBtn'), resetEntryBtn: $('resetEntryBtn'),
@@ -31,7 +31,7 @@
     editStartPage: $('editStartPage'), editEndPage: $('editEndPage'), editMainTag: $('editMainTag'), editNegativeTag: $('editNegativeTag'), editNotes: $('editNotes'), editRaw: $('editRaw'),
     majorOptions: $('majorOptions'), sectionOptions: $('sectionOptions'),
     categoryDialog: $('categoryDialog'), categoryForm: $('categoryForm'), closeCategoryDialog: $('closeCategoryDialog'), cancelCategoryBtn: $('cancelCategoryBtn'),
-    categoryType: $('categoryType'), categoryFrom: $('categoryFrom'), categoryTo: $('categoryTo'), categoryList: $('categoryList')
+    categoryType: $('categoryType'), categoryFrom: $('categoryFrom'), categoryTo: $('categoryTo'), categoryEntryToDelete: $('categoryEntryToDelete'), categoryList: $('categoryList'), deleteCategoryEntries: $('deleteCategoryEntries')
   };
 
   function showToast(msg){
@@ -41,26 +41,64 @@
     showToast.tid = setTimeout(() => els.toast.classList.remove('show'), 1700);
   }
 
+  function setEditableText(el, text){
+    if (!el) return;
+    if ('value' in el) el.value = text || '';
+    else el.textContent = text || '';
+  }
+
+  function getEditableText(el){
+    if (!el) return '';
+    if ('value' in el) return el.value;
+    return (el.innerText || el.textContent || '').replace(/ /g, ' ');
+  }
+
   function setOutputText(text){
-    if ('value' in els.outputPrompt) els.outputPrompt.value = text;
-    else els.outputPrompt.textContent = text || '';
+    setEditableText(els.outputPrompt, text);
+    setEditableText(els.outputPromptLarge, text);
   }
 
   function getOutputText(){
-    if ('value' in els.outputPrompt) return els.outputPrompt.value;
-    return (els.outputPrompt.innerText || els.outputPrompt.textContent || '').replace(/ /g, ' ');
+    if (els.outputDialog?.open && els.outputPromptLarge) return getEditableText(els.outputPromptLarge);
+    return getEditableText(els.outputPrompt);
   }
 
-  function focusOutputEnd(){
-    els.outputPrompt.focus();
-    if (!('value' in els.outputPrompt) && window.getSelection && document.createRange) {
+  function syncOutputEditors(source){
+    const text = getEditableText(source);
+    if (source !== els.outputPrompt) setEditableText(els.outputPrompt, text);
+    if (source !== els.outputPromptLarge) setEditableText(els.outputPromptLarge, text);
+    state.outputManualEdit = true;
+  }
+
+  function focusEditableEnd(el){
+    if (!el) return;
+    el.focus();
+    if (!('value' in el) && window.getSelection && document.createRange) {
       const range = document.createRange();
-      range.selectNodeContents(els.outputPrompt);
+      range.selectNodeContents(el);
       range.collapse(false);
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
+    } else if ('value' in el) {
+      el.selectionStart = el.selectionEnd = el.value.length;
     }
+  }
+
+  function focusOutputEnd(){
+    focusEditableEnd(els.outputDialog?.open ? els.outputPromptLarge : els.outputPrompt);
+  }
+
+  function openOutputFullscreen(){
+    setEditableText(els.outputPromptLarge, getEditableText(els.outputPrompt));
+    els.outputDialog.showModal();
+    setTimeout(() => focusEditableEnd(els.outputPromptLarge), 30);
+  }
+
+  function closeOutputFullscreen(){
+    setEditableText(els.outputPrompt, getEditableText(els.outputPromptLarge));
+    els.outputDialog.close();
+    focusEditableEnd(els.outputPrompt);
   }
 
   function applyOutputFontSize(size, persist = true){
@@ -89,11 +127,12 @@
       state.local = {
         edits: parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {},
         custom: Array.isArray(parsed.custom) ? parsed.custom : [],
-        settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {}
+        settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {},
+        deleted: Array.isArray(parsed.deleted) ? parsed.deleted : []
       };
       if (state.local.settings.outputFontSize) state.outputFontSize = state.local.settings.outputFontSize;
     } catch (err) {
-      state.local = { edits: {}, custom: [], settings: {} };
+      state.local = { edits: {}, custom: [], settings: {}, deleted: [] };
     }
   }
 
@@ -102,11 +141,16 @@
   }
 
   function hydrateData(){
-    data = baseData.map(entry => {
-      const patch = state.local.edits[entry.id];
-      return patch ? {...entry, ...patch, isEdited:true, isCustom:false} : {...entry, isEdited:false, isCustom:false};
-    });
-    const custom = state.local.custom.map(entry => ({...entry, isCustom:true, isEdited:false}));
+    const deleted = new Set(state.local.deleted || []);
+    data = baseData
+      .filter(entry => !deleted.has(entry.id))
+      .map(entry => {
+        const patch = state.local.edits[entry.id];
+        return patch ? {...entry, ...patch, isEdited:true, isCustom:false} : {...entry, isEdited:false, isCustom:false};
+      });
+    const custom = state.local.custom
+      .filter(entry => entry && !deleted.has(entry.id))
+      .map(entry => ({...entry, isCustom:true, isEdited:false}));
     data = [...data, ...custom];
   }
 
@@ -194,8 +238,9 @@
   function renderMetaLine(){
     const customCount = state.local.custom.length;
     const editedCount = Object.keys(state.local.edits).length;
+    const deletedCount = (state.local.deleted || []).length;
     let countLine = `${data.length} 個條目可用；${meta.filtered || 0} 個高風險條目已預設排除；來源：${meta.source_name || 'PDF'}`;
-    if (customCount || editedCount) countLine += `；本機新增 ${customCount}、修改 ${editedCount}`;
+    if (customCount || editedCount || deletedCount) countLine += `；本機新增 ${customCount}、修改 ${editedCount}、刪除 ${deletedCount}`;
     els.metaLine.textContent = countLine;
   }
 
@@ -368,12 +413,13 @@
   function exportLocalData(){
     const payload = {
       name: 'NovelAI Prompt Tag Dictionary local changes',
-      version: 3,
+      version: 4,
       source_name: meta.source_name || 'PDF',
       exported_at: new Date().toISOString(),
       edits: state.local.edits,
       custom: state.local.custom,
-      settings: state.local.settings || {}
+      settings: state.local.settings || {},
+      deleted: state.local.deleted || []
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
@@ -396,8 +442,10 @@
         const edits = parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {};
         const custom = Array.isArray(parsed.custom) ? parsed.custom : [];
         const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
+        const deleted = Array.isArray(parsed.deleted) ? parsed.deleted : [];
         state.local.edits = {...state.local.edits, ...edits};
         state.local.settings = {...(state.local.settings || {}), ...settings};
+        state.local.deleted = unique([...(state.local.deleted || []), ...deleted]);
         if (state.local.settings.outputFontSize) applyOutputFontSize(state.local.settings.outputFontSize, false);
         const customMap = new Map(state.local.custom.map(e => [e.id, e]));
         custom.forEach(e => { if (e && e.id) customMap.set(e.id, e); });
@@ -416,9 +464,9 @@
   }
 
   function clearLocalData(){
-    const ok = confirm('確定清除本機新增與修改？此操作不會影響原始 tags.js。');
+    const ok = confirm('確定清除本機新增、修改與刪除記錄？此操作不會影響原始 tags.js。');
     if (!ok) return;
-    state.local = { edits: {}, custom: [], settings: {} };
+    state.local = { edits: {}, custom: [], settings: {}, deleted: [] };
     applyOutputFontSize(13, false);
     saveLocalData();
     hydrateData();
@@ -442,13 +490,36 @@
     return [...counts.entries()].sort((a,b) => a[0].localeCompare(b[0], 'zh-Hant'));
   }
 
+  function entriesInCategory(type, name){
+    return data
+      .filter(entry => ((entry[type] || '未分類').trim() || '未分類') === name)
+      .sort((a,b) => (Number(a.start_page) || 99999) - (Number(b.start_page) || 99999) || String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hant'));
+  }
+
+  function renderCategoryEntryChoices(){
+    const type = els.categoryType.value === 'section' ? 'section' : 'major';
+    const name = (els.categoryFrom.value || '').trim();
+    const previous = els.categoryEntryToDelete.value;
+    const entries = name ? entriesInCategory(type, name) : [];
+    els.categoryEntryToDelete.innerHTML = entries.map(entry => {
+      const page = pageLabel(entry);
+      const markers = `${entry.isCustom ? ' · 新增' : ''}${entry.isEdited ? ' · 已修改' : ''}`;
+      return `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.title)}（${page}）${markers}</option>`;
+    }).join('');
+    if (entries.some(entry => entry.id === previous)) els.categoryEntryToDelete.value = previous;
+    els.deleteCategoryEntries.disabled = !entries.length;
+  }
+
   function renderCategoryEditor(){
     const type = els.categoryType.value || 'major';
+    const previous = els.categoryFrom.value;
     const counts = getCategoryCounts(type);
     els.categoryFrom.innerHTML = counts.map(([name, count]) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}（${count}）</option>`).join('');
-    if (!els.categoryFrom.value && counts[0]) els.categoryFrom.value = counts[0][0];
+    if (counts.some(([name]) => name === previous)) els.categoryFrom.value = previous;
+    else if (counts[0]) els.categoryFrom.value = counts[0][0];
     const selected = els.categoryFrom.value || (counts[0] ? counts[0][0] : '');
     els.categoryTo.value = selected;
+    renderCategoryEntryChoices();
     els.categoryList.innerHTML = counts.map(([name, count]) => `
       <button type="button" class="category-pill" data-name="${escapeHtml(name)}">
         <span>${escapeHtml(name)}</span><small>${count} 條</small>
@@ -457,6 +528,7 @@
       btn.addEventListener('click', () => {
         els.categoryFrom.value = btn.dataset.name;
         els.categoryTo.value = btn.dataset.name;
+        renderCategoryEntryChoices();
       });
     });
   }
@@ -499,6 +571,37 @@
     showToast(`已更新 ${changed} 個條目的分類`);
   }
 
+
+  function deleteSelectedEntryInCategory(){
+    const type = els.categoryType.value === 'section' ? 'section' : 'major';
+    const name = (els.categoryFrom.value || '').trim();
+    const id = els.categoryEntryToDelete.value;
+    if (!name) return showToast('請先選擇分類');
+    if (!id) return showToast('請先選擇要刪除的條目');
+    const entry = findEntry(id);
+    if (!entry) return showToast('找不到該條目，請重新選擇');
+
+    const label = type === 'section' ? '子分類' : '主分類';
+    const ok = confirm(`確定刪除「${entry.title}」？\n\n目前位於「${name}」${label}。這只會刪除這一個條目，不會刪除整個分類；可用「清除本機修改」恢復原始資料。`);
+    if (!ok) return;
+
+    if (entry.isCustom) {
+      state.local.custom = state.local.custom.filter(e => e.id !== id);
+    } else {
+      state.local.deleted = unique([...(state.local.deleted || []), id]);
+      delete state.local.edits[id];
+    }
+    state.selected = state.selected.filter(item => item.id !== id);
+
+    saveLocalData();
+    hydrateData();
+    initFilters();
+    renderEntries();
+    renderSelected();
+    renderCategoryEditor();
+    showToast(`已刪除條目：${entry.title}`);
+  }
+
   function refreshOutputOptions(){ renderSelected(); }
 
   els.addCustomBtn.addEventListener('click', () => {
@@ -511,14 +614,20 @@
   els.sectionSelect.addEventListener('change', e => { state.section = e.target.value; renderEntries(); });
   els.clearSelectedBtn.addEventListener('click', () => { state.selected = []; renderSelected(); });
   els.copySelectedBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(buildPrompt()); showToast('已複製已選 Tag'); });
-  els.outputPrompt.addEventListener('input', () => { state.outputManualEdit = true; });
-  els.outputPrompt.addEventListener('paste', (e) => {
-    if ('value' in els.outputPrompt) return;
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, text);
-    state.outputManualEdit = true;
+  [els.outputPrompt, els.outputPromptLarge].filter(Boolean).forEach(editor => {
+    editor.addEventListener('input', () => syncOutputEditors(editor));
+    editor.addEventListener('paste', (e) => {
+      if ('value' in editor) return;
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+      syncOutputEditors(editor);
+    });
   });
+  els.outputFullscreenBtn.addEventListener('click', openOutputFullscreen);
+  els.outputFullscreenClose.addEventListener('click', closeOutputFullscreen);
+  els.outputDialog.addEventListener('cancel', () => setEditableText(els.outputPrompt, getEditableText(els.outputPromptLarge)));
+  els.outputDialog.addEventListener('close', () => setEditableText(els.outputPrompt, getEditableText(els.outputPromptLarge)));
   els.outputZoomOut.addEventListener('click', () => { applyOutputFontSize(state.outputFontSize - 1); focusOutputEnd(); });
   els.outputZoomReset.addEventListener('click', () => { applyOutputFontSize(13); focusOutputEnd(); });
   els.outputZoomIn.addEventListener('click', () => { applyOutputFontSize(state.outputFontSize + 1); focusOutputEnd(); });
@@ -541,9 +650,11 @@
 
   els.addEntryBtn.addEventListener('click', () => openEntryEditor(null));
   els.editCategoriesBtn.addEventListener('click', openCategoryEditor);
+  els.deleteCategoryEntriesBtn.addEventListener('click', openCategoryEditor);
   els.categoryType.addEventListener('change', renderCategoryEditor);
-  els.categoryFrom.addEventListener('change', () => { els.categoryTo.value = els.categoryFrom.value; });
+  els.categoryFrom.addEventListener('change', () => { els.categoryTo.value = els.categoryFrom.value; renderCategoryEntryChoices(); });
   els.categoryForm.addEventListener('submit', e => { e.preventDefault(); applyCategoryRename(); });
+  els.deleteCategoryEntries.addEventListener('click', deleteSelectedEntryInCategory);
   els.closeCategoryDialog.addEventListener('click', () => els.categoryDialog.close());
   els.cancelCategoryBtn.addEventListener('click', () => els.categoryDialog.close());
   els.closeEntryDialog.addEventListener('click', () => els.entryDialog.close());

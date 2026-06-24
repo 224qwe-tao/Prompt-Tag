@@ -87,9 +87,10 @@
           <h2>字典管理</h2>
           <div class="button-grid">
             <button id="addEntryBtn" class="primary">增加字典條目</button>
-            <button id="editCategoriesBtn">編輯分類</button>
+            <button id="editCategoriesBtn">修改分類名稱</button>
           </div>
           <div class="button-grid compact-top">
+            <button id="deleteCategoryEntriesBtn" class="danger-soft">刪除條目</button>
             <button id="exportDataBtn">匯出修改</button>
             <label class="file-btn" for="importDataInput">匯入修改</label>
             <input id="importDataInput" type="file" accept="application/json,.json" />
@@ -103,7 +104,8 @@
         <section class="side-block output-block">
           <div class="output-title-row">
             <h2>輸出</h2>
-            <div class="output-zoom" aria-label="輸出格文字大小">
+            <div class="output-zoom" aria-label="輸出格文字大小與放大檢視">
+              <button id="outputFullscreenBtn" class="tiny-btn icon-only" title="放大輸出格">⛶</button>
               <button id="outputZoomOut" class="tiny-btn" title="縮小輸出格文字">A−</button>
               <button id="outputZoomReset" class="tiny-btn" title="還原輸出格文字大小">100%</button>
               <button id="outputZoomIn" class="tiny-btn" title="放大輸出格文字">A+</button>
@@ -223,7 +225,7 @@
       <div class="dialog-head">
         <div>
           <h2>編輯分類</h2>
-          <p class="subtitle">重新命名主分類或子分類，會套用到所有使用該分類的字典條目。</p>
+          <p class="subtitle">重新命名主分類或子分類，或在所選分類中刪除單一字典條目。修改會儲存在目前瀏覽器。</p>
         </div>
         <div class="dialog-tools">
           <button type="button" id="closeCategoryDialog" class="ghost-btn">關閉</button>
@@ -247,18 +249,31 @@
             <span>新分類名稱</span>
             <input id="categoryTo" placeholder="輸入新的分類名稱" />
           </label>
+          <label class="field full">
+            <span>要刪除的條目（只刪除單一條目）</span>
+            <select id="categoryEntryToDelete"></select>
+          </label>
         </div>
         <div class="category-actions">
           <button type="submit" class="primary">套用分類名稱</button>
+          <button type="button" id="deleteCategoryEntries" class="danger">刪除所選條目</button>
           <button type="button" id="cancelCategoryBtn">取消</button>
         </div>
         <div class="category-list-wrap">
           <h3>目前分類一覽</h3>
           <div id="categoryList" class="category-list"></div>
         </div>
-        <p class="hint">提示：新增條目或修改條目時也可以直接輸入新的分類名稱；這裡主要用於批量重新命名既有分類。</p>
+        <p class="hint">提示：新增條目或修改條目時也可以直接輸入新的分類名稱；「刪除所選條目」只會移除上方選單中的一個條目，可透過「清除本機修改」恢復原始資料。</p>
       </div>
     </form>
+  </dialog>
+
+
+  <dialog id="outputDialog" class="dialog output-dialog">
+    <div class="output-modal-body">
+      <div id="outputPromptLarge" class="prompt-editor output-prompt-large" contenteditable="true" role="textbox" aria-multiline="true" tabindex="0" spellcheck="false" data-placeholder="輸出的 Prompt 會在這裡顯示，可直接手動修改"></div>
+      <button id="outputFullscreenClose" class="fullscreen-close" title="縮小輸出格">↙</button>
+    </div>
   </dialog>
   <div id="toast" class="toast" aria-live="polite"></div>
   <script src="tags.js"></script>
