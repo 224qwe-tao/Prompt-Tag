@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NovelAI Prompt Tag 字典</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="layout">
+    <section class="left-panel">
+      <div class="topbar">
+        <div>
+          <h1>NovelAI Prompt Tag 字典</h1>
+          <p id="metaLine" class="subtitle">載入中…</p>
+        </div>
+        <button id="themeBtn" class="ghost-btn" title="Toggle dark mode">Dark</button>
+      </div>
+
+      <div class="input-row">
+        <input id="customInput" type="text" placeholder="輸入角色、畫師、場景或自訂 Tag" />
+        <button id="addCustomBtn">添加</button>
+      </div>
+
+      <div class="search-row">
+        <input id="searchInput" type="search" placeholder="搜尋條目名稱、分類、作者、Tag…" />
+        <select id="majorSelect" aria-label="主分類"></select>
+        <select id="sectionSelect" aria-label="子分類"></select>
+      </div>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>已加入的 Tag</h2>
+          <button id="clearSelectedBtn" class="tiny-btn">清空</button>
+        </div>
+        <div id="selectedTags" class="chips empty"><span>尚未添加，點擊下方條目或輸入自訂 Tag。</span></div>
+      </section>
+
+      <section class="block">
+        <h2>分類</h2>
+        <div id="categoryChips" class="chips"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>字典條目</h2>
+          <div class="sort-tools">
+            <button id="randomBtn" class="tiny-btn">隨機加入</button>
+            <button id="copySelectedBtn" class="tiny-btn">複製已選</button>
+          </div>
+        </div>
+        <div id="entryList" class="entry-list"></div>
+      </section>
+    </section>
+
+    <aside class="right-panel">
+      <div class="sticky">
+        <section class="side-block">
+          <h2>Quick Settings</h2>
+          <div class="button-grid">
+            <button id="selectFirstVisible">選擇首個條目</button>
+            <button id="selectCategoryOnly">只看目前分類</button>
+          </div>
+        </section>
+
+        <section class="side-block">
+          <h2>Custom Settings</h2>
+          <h3>輸出時處理</h3>
+          <label class="check"><input type="checkbox" id="qualityToggle" checked /><span>加入品質詞</span></label>
+          <label class="check"><input type="checkbox" id="underscoreToggle" checked /><span>下劃線改空格</span></label>
+          <label class="check"><input type="checkbox" id="dedupeToggle" checked /><span>移除重複 Tag</span></label>
+          <label class="check"><input type="checkbox" id="pageToggle" /><span>附加來源頁碼註記</span></label>
+
+          <h3>Append to Each Tag (Fixed)</h3>
+          <div class="suffix-row">
+            <button class="suffix" data-value=",">、</button>
+            <button class="suffix" data-value=" ...">…</button>
+            <button class="suffix" data-value=" !">!</button>
+            <button class="suffix" data-value=" masterpiece, best quality">品質詞</button>
+          </div>
+        </section>
+
+        <section class="side-block output-block">
+          <h2>輸出</h2>
+          <textarea id="outputPrompt" readonly placeholder="輸出的 Prompt 會在這裡顯示"></textarea>
+          <div class="button-grid bottom">
+            <button id="buildBtn" class="primary">Output</button>
+            <button id="resetBtn">Reset</button>
+          </div>
+          <button id="copyOutputBtn" class="wide secondary">複製 Prompt</button>
+          <p class="hint">點擊卡片「添加」會把主要 Tag 加入輸出；點擊「查看」可閱讀原始欄位。</p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="detailDialog" class="dialog">
+    <div class="dialog-head">
+      <div>
+        <h2 id="detailTitle"></h2>
+        <p id="detailMeta" class="subtitle"></p>
+      </div>
+      <button id="closeDialog" class="ghost-btn">關閉</button>
+    </div>
+    <div class="detail-grid">
+      <section>
+        <h3>主要 Tag</h3>
+        <pre id="detailMain"></pre>
+        <button id="detailAddMain" class="primary small">添加主要 Tag</button>
+      </section>
+      <section>
+        <h3>負面 Tag</h3>
+        <pre id="detailNegative"></pre>
+        <button id="detailCopyNegative" class="small">複製負面 Tag</button>
+      </section>
+      <section class="full">
+        <h3>備註 / 原始摘錄</h3>
+        <pre id="detailNotes"></pre>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="tags.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
