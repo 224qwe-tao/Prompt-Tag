@@ -297,3 +297,30 @@ button.icon-only{font-size:16px;line-height:1;min-width:38px}
 .github-status.error{color:var(--danger)}
 .github-status code{background:var(--soft);border-radius:6px;padding:2px 5px;color:var(--ink)}
 @media (max-width:1060px){.github-grid{grid-template-columns:1fr}}
+
+/* Management and GitHub action buttons: keep both panels using the same block size. */
+.manage-block .button-grid > button,
+.manage-block .button-grid > .file-btn,
+.github-block .button-grid > button,
+.github-block .button-grid > .file-btn{
+  min-height:74px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  line-height:1.28;
+}
+.github-block .button-grid{
+  grid-auto-rows:74px;
+}
+.github-block .button-grid > button{
+  height:74px;
+  padding:12px 14px;
+}
+@media (max-width:1060px){
+  .manage-block .button-grid > button,
+  .manage-block .button-grid > .file-btn,
+  .github-block .button-grid > button,
+  .github-block .button-grid > .file-btn{
+    min-height:74px;
+  }
+}

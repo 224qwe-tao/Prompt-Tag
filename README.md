@@ -35,6 +35,8 @@
 
 ## GitHub 保存與跨設備同步
 
+- `匯入修改` 按鈕已移除；跨設備同步以 `GitHub 保存` / 自動讀取 `dictionary-changes.json` 為主。
+
 此版本新增 `GitHub 保存` 面板，可把目前瀏覽器的修改保存到 repository 內的 `dictionary-changes.json`。其他設備打開網站時，網站會自動讀取此檔案並套用修改。
 
 ### 第一次設定

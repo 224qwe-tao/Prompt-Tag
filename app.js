@@ -954,7 +954,9 @@
   els.entryForm.addEventListener('submit', e => { e.preventDefault(); saveEntry(collectEntryFromForm()); });
   els.resetEntryBtn.addEventListener('click', resetEntryToOriginal);
   els.exportDataBtn.addEventListener('click', exportLocalData);
-  els.importDataInput.addEventListener('change', e => { importLocalData(e.target.files[0]); e.target.value = ''; });
+  if (els.importDataInput) {
+    els.importDataInput.addEventListener('change', e => { importLocalData(e.target.files[0]); e.target.value = ''; });
+  }
   
   els.saveGithubConfigBtn?.addEventListener('click', () => saveGithubConfig(true));
   els.loadGithubBtn?.addEventListener('click', loadChangesFromGithub);
