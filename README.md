@@ -75,3 +75,6 @@
 ## 備註
 
 PDF 原圖沒有導入，網站只使用解析出的文字型 Prompt Tag 條目。預設排除的高風險條目沒有放入 `tags.js`。
+## 版本更新
+
+- 修正繁體中文字形顯示問題，優先使用 Microsoft JhengHei / PingFang TC / Noto Sans TC 等繁體中文字體，避免「側」等字被其他 CJK 字體替代。
