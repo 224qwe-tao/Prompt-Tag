@@ -2,13 +2,15 @@
   const baseData = Array.isArray(window.TAG_DATA) ? window.TAG_DATA : [];
   const meta = window.TAG_METADATA || {};
   const STORAGE_KEY = 'novelai_prompt_tag_dictionary_local_v3';
+  const GITHUB_CONFIG_KEY = 'novelai_prompt_tag_dictionary_github_config_v1';
+  const SHARED_CHANGES_PATH = 'dictionary-changes.json';
   const state = {
     selected: [],
     major: '全部',
     section: '全部',
     query: '',
     suffix: '',
-    local: { edits: {}, custom: [], settings: {}, deleted: [] },
+    local: { edits: {}, custom: [], settings: {}, deleted: [], categories: { major: [], section: [] } },
     currentDetailId: null,
     outputManualEdit: false,
     outputFontSize: 13
@@ -23,7 +25,7 @@
     randomBtn: $('randomBtn'), outputPrompt: $('outputPrompt'), outputPromptLarge: $('outputPromptLarge'), outputDialog: $('outputDialog'), outputFullscreenBtn: $('outputFullscreenBtn'), outputFullscreenClose: $('outputFullscreenClose'), outputZoomOut: $('outputZoomOut'), outputZoomReset: $('outputZoomReset'), outputZoomIn: $('outputZoomIn'), buildBtn: $('buildBtn'), resetBtn: $('resetBtn'), copyOutputBtn: $('copyOutputBtn'),
     qualityToggle: $('qualityToggle'), underscoreToggle: $('underscoreToggle'), dedupeToggle: $('dedupeToggle'), pageToggle: $('pageToggle'),
     selectFirstVisible: $('selectFirstVisible'), selectCategoryOnly: $('selectCategoryOnly'), themeBtn: $('themeBtn'), toast: $('toast'),
-    addEntryBtn: $('addEntryBtn'), editCategoriesBtn: $('editCategoriesBtn'), deleteCategoryEntriesBtn: $('deleteCategoryEntriesBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'), clearLocalDataBtn: $('clearLocalDataBtn'),
+    addEntryBtn: $('addEntryBtn'), addCategoryBtn: $('addCategoryBtn'), editCategoriesBtn: $('editCategoriesBtn'), deleteCategoryEntriesBtn: $('deleteCategoryEntriesBtn'), exportDataBtn: $('exportDataBtn'), importDataInput: $('importDataInput'),
     detailDialog: $('detailDialog'), closeDialog: $('closeDialog'), detailEditEntry: $('detailEditEntry'), detailTitle: $('detailTitle'), detailMeta: $('detailMeta'), detailMain: $('detailMain'),
     detailNegative: $('detailNegative'), detailNotes: $('detailNotes'), detailAddMain: $('detailAddMain'), detailCopyNegative: $('detailCopyNegative'),
     entryDialog: $('entryDialog'), entryForm: $('entryForm'), entryDialogTitle: $('entryDialogTitle'), closeEntryDialog: $('closeEntryDialog'), cancelEntryBtn: $('cancelEntryBtn'), resetEntryBtn: $('resetEntryBtn'),
@@ -31,7 +33,9 @@
     editStartPage: $('editStartPage'), editEndPage: $('editEndPage'), editMainTag: $('editMainTag'), editNegativeTag: $('editNegativeTag'), editNotes: $('editNotes'), editRaw: $('editRaw'),
     majorOptions: $('majorOptions'), sectionOptions: $('sectionOptions'),
     categoryDialog: $('categoryDialog'), categoryForm: $('categoryForm'), closeCategoryDialog: $('closeCategoryDialog'), cancelCategoryBtn: $('cancelCategoryBtn'),
-    categoryType: $('categoryType'), categoryFrom: $('categoryFrom'), categoryTo: $('categoryTo'), categoryEntryToDelete: $('categoryEntryToDelete'), categoryList: $('categoryList'), deleteCategoryEntries: $('deleteCategoryEntries')
+    categoryType: $('categoryType'), categoryFrom: $('categoryFrom'), categoryTo: $('categoryTo'), categoryNewName: $('categoryNewName'), categoryEntryToDelete: $('categoryEntryToDelete'), categoryList: $('categoryList'), deleteCategoryEntries: $('deleteCategoryEntries'), addCategoryConfirm: $('addCategoryConfirm'),
+    githubRepo: $('githubRepo'), githubBranch: $('githubBranch'), githubPath: $('githubPath'), githubToken: $('githubToken'), githubRememberToken: $('githubRememberToken'),
+    saveGithubConfigBtn: $('saveGithubConfigBtn'), loadGithubBtn: $('loadGithubBtn'), saveGithubBtn: $('saveGithubBtn'), githubStatus: $('githubStatus')
   };
 
   function showToast(msg){
@@ -128,17 +132,283 @@
         edits: parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {},
         custom: Array.isArray(parsed.custom) ? parsed.custom : [],
         settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {},
-        deleted: Array.isArray(parsed.deleted) ? parsed.deleted : []
+        deleted: Array.isArray(parsed.deleted) ? parsed.deleted : [],
+        categories: parsed.categories && typeof parsed.categories === 'object' ? {
+          major: Array.isArray(parsed.categories.major) ? parsed.categories.major.filter(Boolean) : [],
+          section: Array.isArray(parsed.categories.section) ? parsed.categories.section.filter(Boolean) : []
+        } : { major: [], section: [] }
       };
       if (state.local.settings.outputFontSize) state.outputFontSize = state.local.settings.outputFontSize;
     } catch (err) {
-      state.local = { edits: {}, custom: [], settings: {}, deleted: [] };
+      state.local = { edits: {}, custom: [], settings: {}, deleted: [], categories: { major: [], section: [] } };
     }
   }
 
   function saveLocalData(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.local));
   }
+
+  function buildChangesPayload(){
+    return {
+      name: 'NovelAI Prompt Tag Dictionary shared changes',
+      version: 5,
+      source_name: meta.source_name || 'PDF',
+      exported_at: new Date().toISOString(),
+      edits: state.local.edits || {},
+      custom: state.local.custom || [],
+      settings: state.local.settings || {},
+      deleted: state.local.deleted || [],
+      categories: state.local.categories || { major: [], section: [] }
+    };
+  }
+
+  function normalizeChangesPayload(payload){
+    const parsed = payload && typeof payload === 'object' ? payload : {};
+    return {
+      edits: parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {},
+      custom: Array.isArray(parsed.custom) ? parsed.custom.filter(e => e && e.id) : [],
+      settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {},
+      deleted: Array.isArray(parsed.deleted) ? parsed.deleted.filter(Boolean) : [],
+      categories: parsed.categories && typeof parsed.categories === 'object' ? {
+        major: Array.isArray(parsed.categories.major) ? parsed.categories.major.filter(Boolean) : [],
+        section: Array.isArray(parsed.categories.section) ? parsed.categories.section.filter(Boolean) : []
+      } : { major: [], section: [] }
+    };
+  }
+
+  function mergeChangesPayload(payload, preferIncoming = true){
+    const incoming = normalizeChangesPayload(payload);
+    state.local.edits = preferIncoming
+      ? {...(state.local.edits || {}), ...incoming.edits}
+      : {...incoming.edits, ...(state.local.edits || {})};
+    state.local.settings = preferIncoming
+      ? {...(state.local.settings || {}), ...incoming.settings}
+      : {...incoming.settings, ...(state.local.settings || {})};
+    state.local.deleted = unique([...(state.local.deleted || []), ...incoming.deleted]);
+    state.local.categories = state.local.categories || { major: [], section: [] };
+    state.local.categories.major = unique([...(state.local.categories.major || []), ...(incoming.categories?.major || [])]);
+    state.local.categories.section = unique([...(state.local.categories.section || []), ...(incoming.categories?.section || [])]);
+
+    const customMap = new Map();
+    const addCustom = (entry) => { if (entry && entry.id) customMap.set(entry.id, entry); };
+    if (preferIncoming) {
+      (state.local.custom || []).forEach(addCustom);
+      incoming.custom.forEach(addCustom);
+    } else {
+      incoming.custom.forEach(addCustom);
+      (state.local.custom || []).forEach(addCustom);
+    }
+    state.local.custom = [...customMap.values()];
+    if (state.local.settings.outputFontSize) applyOutputFontSize(state.local.settings.outputFontSize, false);
+    saveLocalData();
+    hydrateData();
+    initFilters();
+    renderEntries();
+    renderSelected();
+    if (els.categoryDialog?.open) renderCategoryEditor();
+    return {
+      edits: Object.keys(incoming.edits).length,
+      custom: incoming.custom.length,
+      deleted: incoming.deleted.length,
+      categories: (incoming.categories?.major || []).length + (incoming.categories?.section || []).length
+    };
+  }
+
+  function describeChangeCounts(counts){
+    const parts = [];
+    if (counts.edits) parts.push(`修改 ${counts.edits}`);
+    if (counts.custom) parts.push(`新增 ${counts.custom}`);
+    if (counts.deleted) parts.push(`刪除 ${counts.deleted}`);
+    if (counts.categories) parts.push(`分類 ${counts.categories}`);
+    return parts.length ? parts.join('、') : '沒有新增修改';
+  }
+
+  function base64EncodeUnicode(str){
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
+  function base64DecodeUnicode(b64){
+    const clean = String(b64 || '').replace(/\s/g, '');
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function githubApiPath(path){
+    return String(path || SHARED_CHANGES_PATH).split('/').map(encodeURIComponent).join('/');
+  }
+
+  function parseRepoSlug(input){
+    const value = String(input || '').trim().replace(/\.git$/, '');
+    const urlMatch = value.match(/github\.com\/([^\/]+)\/([^\/#?]+)/i);
+    if (urlMatch) return `${urlMatch[1]}/${urlMatch[2]}`;
+    const parts = value.split('/').filter(Boolean);
+    if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+    return '';
+  }
+
+  function inferGithubRepoFromLocation(){
+    const host = location.hostname || '';
+    const match = host.match(/^([^\.]+)\.github\.io$/i);
+    const pathRepo = location.pathname.split('/').filter(Boolean)[0];
+    if (match && pathRepo) return `${match[1]}/${pathRepo}`;
+    return '';
+  }
+
+  function setGithubStatus(message, isError = false){
+    if (!els.githubStatus) return;
+    els.githubStatus.textContent = message;
+    els.githubStatus.classList.toggle('error', Boolean(isError));
+  }
+
+  function loadGithubConfig(){
+    try {
+      const parsed = JSON.parse(localStorage.getItem(GITHUB_CONFIG_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function getGithubFormConfig(){
+    return {
+      repo: parseRepoSlug(els.githubRepo?.value),
+      branch: (els.githubBranch?.value || 'main').trim() || 'main',
+      path: (els.githubPath?.value || SHARED_CHANGES_PATH).trim() || SHARED_CHANGES_PATH,
+      token: (els.githubToken?.value || '').trim(),
+      rememberToken: Boolean(els.githubRememberToken?.checked)
+    };
+  }
+
+  function renderGithubConfig(){
+    const cfg = loadGithubConfig();
+    if (els.githubRepo) els.githubRepo.value = cfg.repo || inferGithubRepoFromLocation();
+    if (els.githubBranch) els.githubBranch.value = cfg.branch || 'main';
+    if (els.githubPath) els.githubPath.value = cfg.path || SHARED_CHANGES_PATH;
+    if (els.githubToken) els.githubToken.value = cfg.token || '';
+    if (els.githubRememberToken) els.githubRememberToken.checked = Boolean(cfg.token);
+  }
+
+  function saveGithubConfig(showMessage = true){
+    const cfg = getGithubFormConfig();
+    const saved = {
+      repo: cfg.repo,
+      branch: cfg.branch,
+      path: cfg.path,
+      token: cfg.rememberToken ? cfg.token : ''
+    };
+    localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(saved));
+    if (showMessage) {
+      setGithubStatus(`已儲存 GitHub 設定：${cfg.repo || '未填 Repository'} / ${cfg.branch} / ${cfg.path}`);
+      showToast('已儲存 GitHub 設定');
+    }
+    return cfg;
+  }
+
+  function githubHeaders(token){
+    const headers = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  async function githubErrorMessage(res){
+    try {
+      const json = await res.json();
+      return json.message || `${res.status} ${res.statusText}`;
+    } catch (err) {
+      return `${res.status} ${res.statusText}`;
+    }
+  }
+
+  async function autoLoadSharedChanges(){
+    try {
+      const res = await fetch(`${SHARED_CHANGES_PATH}?v=${Date.now()}`, {cache:'no-store'});
+      if (!res.ok) return;
+      const parsed = await res.json();
+      const counts = mergeChangesPayload(parsed, true);
+      if (counts.edits || counts.custom || counts.deleted) {
+        showToast('已載入 GitHub 共享修改');
+        setGithubStatus(`已自動載入 ${SHARED_CHANGES_PATH}：${describeChangeCounts(counts)}`);
+      }
+    } catch (err) {
+      // GitHub Pages 上沒有共享檔或本地開啟 file:// 時可安全忽略。
+    }
+  }
+
+  async function loadChangesFromGithub(){
+    const cfg = saveGithubConfig(false);
+    if (!cfg.repo) return setGithubStatus('請先輸入 Repository，例如 username/repository。', true);
+    const url = `https://api.github.com/repos/${cfg.repo}/contents/${githubApiPath(cfg.path)}?ref=${encodeURIComponent(cfg.branch)}`;
+    try {
+      setGithubStatus('正在從 GitHub 載入修改…');
+      const res = await fetch(url, {headers: githubHeaders(cfg.token)});
+      if (res.status === 404) {
+        setGithubStatus(`找不到 ${cfg.path}，可先按「保存到 GitHub」建立此檔案。`, true);
+        return;
+      }
+      if (!res.ok) throw new Error(await githubErrorMessage(res));
+      const file = await res.json();
+      const text = base64DecodeUnicode(file.content || '');
+      const parsed = JSON.parse(text);
+      const counts = mergeChangesPayload(parsed, true);
+      setGithubStatus(`已載入 GitHub 修改：${describeChangeCounts(counts)}`);
+      showToast('已載入 GitHub 修改');
+    } catch (err) {
+      setGithubStatus(`載入失敗：${err.message}`, true);
+      showToast('GitHub 載入失敗');
+    }
+  }
+
+  async function saveChangesToGithub(){
+    const cfg = saveGithubConfig(false);
+    if (!cfg.repo) return setGithubStatus('請先輸入 Repository，例如 username/repository。', true);
+    if (!cfg.token) return setGithubStatus('請輸入 Fine-grained token。Token 需要該 repository 的 Contents: Read and write 權限。', true);
+    const url = `https://api.github.com/repos/${cfg.repo}/contents/${githubApiPath(cfg.path)}`;
+    try {
+      setGithubStatus('正在檢查 GitHub 檔案…');
+      let sha = null;
+      const getRes = await fetch(`${url}?ref=${encodeURIComponent(cfg.branch)}`, {headers: githubHeaders(cfg.token)});
+      if (getRes.ok) {
+        const current = await getRes.json();
+        sha = current.sha || null;
+      } else if (getRes.status !== 404) {
+        throw new Error(await githubErrorMessage(getRes));
+      }
+
+      const payload = buildChangesPayload();
+      const content = JSON.stringify(payload, null, 2);
+      const body = {
+        message: 'Update NovelAI Prompt Tag dictionary changes',
+        content: base64EncodeUnicode(content),
+        branch: cfg.branch
+      };
+      if (sha) body.sha = sha;
+
+      setGithubStatus('正在保存到 GitHub…');
+      const putRes = await fetch(url, {
+        method: 'PUT',
+        headers: {...githubHeaders(cfg.token), 'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (!putRes.ok) throw new Error(await githubErrorMessage(putRes));
+      setGithubStatus(`已保存到 GitHub：${cfg.path}。其他設備重新開啟網站後會讀取更新；GitHub Pages 可能需要等待短時間部署。`);
+      showToast('已保存到 GitHub');
+    } catch (err) {
+      setGithubStatus(`保存失敗：${err.message}`, true);
+      showToast('GitHub 保存失敗');
+    }
+  }
+
 
   function hydrateData(){
     const deleted = new Set(state.local.deleted || []);
@@ -224,8 +494,24 @@
     showToast('已加入');
   }
 
+  function ensureCategoryStore(){
+    if (!state.local.categories || typeof state.local.categories !== 'object') state.local.categories = { major: [], section: [] };
+    if (!Array.isArray(state.local.categories.major)) state.local.categories.major = [];
+    if (!Array.isArray(state.local.categories.section)) state.local.categories.section = [];
+  }
+
+  function extraCategories(type){
+    ensureCategoryStore();
+    return unique(state.local.categories[type] || []);
+  }
+
+  function allCategoryNames(type, sourceData = data){
+    const names = unique([...(sourceData || []).map(e => e[type]), ...extraCategories(type)]);
+    return names.filter(Boolean);
+  }
+
   function initFilters(){
-    const majors = ['全部', ...unique(data.map(e => e.major))];
+    const majors = ['全部', ...allCategoryNames('major')];
     if (!majors.includes(state.major)) state.major = '全部';
     els.majorSelect.innerHTML = majors.map(m => `<option>${escapeHtml(m)}</option>`).join('');
     els.majorSelect.value = state.major;
@@ -239,26 +525,27 @@
     const customCount = state.local.custom.length;
     const editedCount = Object.keys(state.local.edits).length;
     const deletedCount = (state.local.deleted || []).length;
+    const categoryCount = (state.local.categories?.major || []).length + (state.local.categories?.section || []).length;
     let countLine = `${data.length} 個條目可用；${meta.filtered || 0} 個高風險條目已預設排除；來源：${meta.source_name || 'PDF'}`;
-    if (customCount || editedCount || deletedCount) countLine += `；本機新增 ${customCount}、修改 ${editedCount}、刪除 ${deletedCount}`;
+    if (customCount || editedCount || deletedCount || categoryCount) countLine += `；本機新增 ${customCount}、修改 ${editedCount}、刪除 ${deletedCount}、分類 ${categoryCount}`;
     els.metaLine.textContent = countLine;
   }
 
   function renderDatalistOptions(){
-    els.majorOptions.innerHTML = unique(data.map(e => e.major)).map(m => `<option value="${escapeHtml(m)}"></option>`).join('');
-    els.sectionOptions.innerHTML = unique(data.map(e => e.section)).map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
+    els.majorOptions.innerHTML = allCategoryNames('major').map(m => `<option value="${escapeHtml(m)}"></option>`).join('');
+    els.sectionOptions.innerHTML = allCategoryNames('section').map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
   }
 
   function renderSectionOptions(){
     const pool = state.major === '全部' ? data : data.filter(e => e.major === state.major);
-    const sections = ['全部', ...unique(pool.map(e => e.section))];
+    const sections = ['全部', ...unique([...pool.map(e => e.section), ...extraCategories('section')])];
     els.sectionSelect.innerHTML = sections.map(s => `<option>${escapeHtml(s)}</option>`).join('');
     if (!sections.includes(state.section)) state.section = '全部';
     els.sectionSelect.value = state.section;
   }
 
   function renderCategoryChips(){
-    const majors = ['全部', ...unique(data.map(e => e.major))];
+    const majors = ['全部', ...allCategoryNames('major')];
     els.categoryChips.innerHTML = '';
     majors.forEach(m => {
       const chip = document.createElement('button');
@@ -411,21 +698,12 @@
   }
 
   function exportLocalData(){
-    const payload = {
-      name: 'NovelAI Prompt Tag Dictionary local changes',
-      version: 4,
-      source_name: meta.source_name || 'PDF',
-      exported_at: new Date().toISOString(),
-      edits: state.local.edits,
-      custom: state.local.custom,
-      settings: state.local.settings || {},
-      deleted: state.local.deleted || []
-    };
+    const payload = buildChangesPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'novelai-tag-dictionary-local-changes.json';
+    a.download = 'dictionary-changes.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -439,23 +717,8 @@
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result);
-        const edits = parsed.edits && typeof parsed.edits === 'object' ? parsed.edits : {};
-        const custom = Array.isArray(parsed.custom) ? parsed.custom : [];
-        const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
-        const deleted = Array.isArray(parsed.deleted) ? parsed.deleted : [];
-        state.local.edits = {...state.local.edits, ...edits};
-        state.local.settings = {...(state.local.settings || {}), ...settings};
-        state.local.deleted = unique([...(state.local.deleted || []), ...deleted]);
-        if (state.local.settings.outputFontSize) applyOutputFontSize(state.local.settings.outputFontSize, false);
-        const customMap = new Map(state.local.custom.map(e => [e.id, e]));
-        custom.forEach(e => { if (e && e.id) customMap.set(e.id, e); });
-        state.local.custom = [...customMap.values()];
-        saveLocalData();
-        hydrateData();
-        initFilters();
-        renderEntries();
-        renderSelected();
-        showToast('已匯入修改');
+        const counts = mergeChangesPayload(parsed, true);
+        showToast(`已匯入修改：${describeChangeCounts(counts)}`);
       } catch (err) {
         showToast('JSON 格式不正確');
       }
@@ -466,7 +729,7 @@
   function clearLocalData(){
     const ok = confirm('確定清除本機新增、修改與刪除記錄？此操作不會影響原始 tags.js。');
     if (!ok) return;
-    state.local = { edits: {}, custom: [], settings: {}, deleted: [] };
+    state.local = { edits: {}, custom: [], settings: {}, deleted: [], categories: { major: [], section: [] } };
     applyOutputFontSize(13, false);
     saveLocalData();
     hydrateData();
@@ -483,6 +746,7 @@
 
   function getCategoryCounts(type){
     const counts = new Map();
+    extraCategories(type).forEach(name => counts.set(name, 0));
     data.forEach(e => {
       const name = (e[type] || '未分類').trim() || '未分類';
       counts.set(name, (counts.get(name) || 0) + 1);
@@ -538,6 +802,25 @@
     els.categoryDialog.showModal();
   }
 
+  function addCategory(){
+    const type = els.categoryType.value === 'section' ? 'section' : 'major';
+    const name = (els.categoryNewName?.value || '').trim();
+    if (!name) return showToast('請輸入要新增的分類名稱');
+    ensureCategoryStore();
+    const existing = new Set(allCategoryNames(type));
+    if (existing.has(name)) return showToast('此分類已存在');
+    state.local.categories[type] = unique([...(state.local.categories[type] || []), name]);
+    if (type === 'major') state.major = name;
+    if (type === 'section') state.section = name;
+    saveLocalData();
+    initFilters();
+    renderEntries();
+    renderSelected();
+    renderCategoryEditor();
+    if (els.categoryNewName) els.categoryNewName.value = '';
+    showToast(`已新增分類：${name}`);
+  }
+
   function applyCategoryRename(){
     const type = els.categoryType.value === 'section' ? 'section' : 'major';
     const oldName = (els.categoryFrom.value || '').trim();
@@ -559,7 +842,14 @@
       }
     });
 
-    if (!changed) return showToast('沒有條目使用此分類');
+    ensureCategoryStore();
+    const extraList = state.local.categories[type] || [];
+    const extraIdx = extraList.indexOf(oldName);
+    if (extraIdx >= 0) {
+      state.local.categories[type][extraIdx] = newName;
+      state.local.categories[type] = unique(state.local.categories[type]);
+      changed += 1;
+    } else if (!changed) return showToast('沒有條目使用此分類');
     if (type === 'major' && state.major === oldName) state.major = newName;
     if (type === 'section' && state.section === oldName) state.section = newName;
     saveLocalData();
@@ -582,7 +872,7 @@
     if (!entry) return showToast('找不到該條目，請重新選擇');
 
     const label = type === 'section' ? '子分類' : '主分類';
-    const ok = confirm(`確定刪除「${entry.title}」？\n\n目前位於「${name}」${label}。這只會刪除這一個條目，不會刪除整個分類；可用「清除本機修改」恢復原始資料。`);
+    const ok = confirm(`確定刪除「${entry.title}」？\n\n目前位於「${name}」${label}。這只會刪除這一個條目，不會刪除整個分類。`);
     if (!ok) return;
 
     if (entry.isCustom) {
@@ -649,11 +939,13 @@
   }));
 
   els.addEntryBtn.addEventListener('click', () => openEntryEditor(null));
+  els.addCategoryBtn?.addEventListener('click', () => { openCategoryEditor(); setTimeout(() => els.categoryNewName?.focus(), 30); });
   els.editCategoriesBtn.addEventListener('click', openCategoryEditor);
   els.deleteCategoryEntriesBtn.addEventListener('click', openCategoryEditor);
   els.categoryType.addEventListener('change', renderCategoryEditor);
   els.categoryFrom.addEventListener('change', () => { els.categoryTo.value = els.categoryFrom.value; renderCategoryEntryChoices(); });
   els.categoryForm.addEventListener('submit', e => { e.preventDefault(); applyCategoryRename(); });
+  els.addCategoryConfirm?.addEventListener('click', addCategory);
   els.deleteCategoryEntries.addEventListener('click', deleteSelectedEntryInCategory);
   els.closeCategoryDialog.addEventListener('click', () => els.categoryDialog.close());
   els.cancelCategoryBtn.addEventListener('click', () => els.categoryDialog.close());
@@ -663,12 +955,17 @@
   els.resetEntryBtn.addEventListener('click', resetEntryToOriginal);
   els.exportDataBtn.addEventListener('click', exportLocalData);
   els.importDataInput.addEventListener('change', e => { importLocalData(e.target.files[0]); e.target.value = ''; });
-  els.clearLocalDataBtn.addEventListener('click', clearLocalData);
+  
+  els.saveGithubConfigBtn?.addEventListener('click', () => saveGithubConfig(true));
+  els.loadGithubBtn?.addEventListener('click', loadChangesFromGithub);
+  els.saveGithubBtn?.addEventListener('click', saveChangesToGithub);
 
   loadLocalData();
+  renderGithubConfig();
   applyOutputFontSize(state.outputFontSize, false);
   hydrateData();
   initFilters();
   renderEntries();
   renderSelected();
+  autoLoadSharedChanges();
 })();

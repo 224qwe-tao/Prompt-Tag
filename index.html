@@ -87,16 +87,50 @@
           <h2>字典管理</h2>
           <div class="button-grid">
             <button id="addEntryBtn" class="primary">增加字典條目</button>
+            <button id="addCategoryBtn">添加分類</button>
             <button id="editCategoriesBtn">修改分類名稱</button>
+            <button id="deleteCategoryEntriesBtn" class="danger-soft">刪除條目</button>
           </div>
           <div class="button-grid compact-top">
-            <button id="deleteCategoryEntriesBtn" class="danger-soft">刪除條目</button>
-            <button id="exportDataBtn">匯出修改</button>
             <label class="file-btn" for="importDataInput">匯入修改</label>
             <input id="importDataInput" type="file" accept="application/json,.json" />
           </div>
-          <button id="clearLocalDataBtn" class="wide compact-top">清除本機修改</button>
-          <p class="hint">新增及修改會儲存在目前瀏覽器。上傳到 GitHub 後仍可使用；要讓所有訪客看到同一份修改，請把匯出的 JSON 或更新後資料 commit 到 repository。</p>
+          <p class="hint">新增及修改會先儲存在目前瀏覽器；也可以使用下方 GitHub 保存，把修改同步到 repository。</p>
+        </section>
+
+        <section class="side-block github-block">
+          <h2>GitHub 保存</h2>
+          <div class="github-form">
+            <label class="mini-field">
+              <span>Repository</span>
+              <input id="githubRepo" type="text" placeholder="username/repository" autocomplete="off" />
+            </label>
+            <div class="github-grid">
+              <label class="mini-field">
+                <span>Branch</span>
+                <input id="githubBranch" type="text" value="main" autocomplete="off" />
+              </label>
+              <label class="mini-field">
+                <span>保存檔案路徑</span>
+                <input id="githubPath" type="text" value="dictionary-changes.json" autocomplete="off" />
+              </label>
+            </div>
+            <label class="mini-field">
+              <span>Fine-grained token</span>
+              <input id="githubToken" type="password" placeholder="只在保存/載入私有 repo 時需要" autocomplete="off" />
+            </label>
+            <label class="check github-check">
+              <input type="checkbox" id="githubRememberToken" />
+              <span>在本機記住 Token</span>
+            </label>
+            <div class="button-grid compact-top">
+              <button id="saveGithubConfigBtn" type="button">儲存設定</button>
+              <button id="loadGithubBtn" type="button">載入 GitHub 修改</button>
+              <button id="saveGithubBtn" type="button" class="primary">保存到 GitHub</button>
+              <button id="exportDataBtn" type="button">匯出修改</button>
+            </div>
+            <p id="githubStatus" class="hint github-status">其他設備會自動讀取 <code>dictionary-changes.json</code>；保存後 GitHub Pages 可能需要等候短時間才更新。</p>
+          </div>
         </section>
 
         </div>
@@ -225,7 +259,7 @@
       <div class="dialog-head">
         <div>
           <h2>編輯分類</h2>
-          <p class="subtitle">重新命名主分類或子分類，或在所選分類中刪除單一字典條目。修改會儲存在目前瀏覽器。</p>
+          <p class="subtitle">新增分類、重新命名主分類或子分類，或在所選分類中刪除單一字典條目。修改會儲存在目前瀏覽器。</p>
         </div>
         <div class="dialog-tools">
           <button type="button" id="closeCategoryDialog" class="ghost-btn">關閉</button>
@@ -246,6 +280,10 @@
             <select id="categoryFrom"></select>
           </label>
           <label class="field full">
+            <span>新增分類名稱</span>
+            <input id="categoryNewName" placeholder="輸入要新增的分類名稱" />
+          </label>
+          <label class="field full">
             <span>新分類名稱</span>
             <input id="categoryTo" placeholder="輸入新的分類名稱" />
           </label>
@@ -255,6 +293,7 @@
           </label>
         </div>
         <div class="category-actions">
+          <button type="button" id="addCategoryConfirm" class="primary">添加分類</button>
           <button type="submit" class="primary">套用分類名稱</button>
           <button type="button" id="deleteCategoryEntries" class="danger">刪除所選條目</button>
           <button type="button" id="cancelCategoryBtn">取消</button>
@@ -263,7 +302,7 @@
           <h3>目前分類一覽</h3>
           <div id="categoryList" class="category-list"></div>
         </div>
-        <p class="hint">提示：新增條目或修改條目時也可以直接輸入新的分類名稱；「刪除所選條目」只會移除上方選單中的一個條目，可透過「清除本機修改」恢復原始資料。</p>
+        <p class="hint">提示：新增分類會先出現在篩選與分類按鈕中；新增條目或修改條目時也可以直接輸入新的分類名稱。「刪除所選條目」只會移除上方選單中的一個條目。</p>
       </div>
     </form>
   </dialog>

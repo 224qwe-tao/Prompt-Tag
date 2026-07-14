@@ -282,3 +282,18 @@ button.icon-only{font-size:16px;line-height:1;min-width:38px}
 @media (max-width:1060px){.layout{grid-template-columns:1fr}.right-panel{border-left:0;border-top:1px solid var(--line)}.sticky{position:static;max-height:none;display:block;overflow:visible}.settings-scroll{overflow:visible;padding-right:0}.settings-scroll .side-block{margin-bottom:38px}.output-block{border-top:0;padding-top:0;margin-bottom:38px}.output-block textarea,.output-block .prompt-editor{height:230px}.output-block .hint{max-height:none;overflow:visible}.search-row{grid-template-columns:1fr}.left-panel,.right-panel{padding:34px 24px}.entry-list{grid-template-columns:1fr}.dialog{width:94vw}.detail-grid,.form-grid{grid-template-columns:1fr}.form-grid.nested{grid-template-columns:1fr}.field.full{grid-column:1}.entry-actions{grid-template-columns:1fr}.button-grid{grid-template-columns:1fr}.output-title-row{align-items:flex-start}.category-actions{justify-content:stretch;flex-direction:column}.category-list{max-height:none}}
 
 @media (max-width:720px){.output-dialog{width:96vw;height:86vh}.output-modal-body{padding:16px}.fullscreen-close{right:14px;bottom:12px}}
+
+/* GitHub sync panel */
+.github-block{border-top:1px solid var(--line);padding-top:24px}
+.github-form{display:grid;gap:12px}
+.github-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini-field{display:flex;flex-direction:column;gap:7px;font-weight:800;color:var(--ink)}
+.mini-field span{font-size:13px;color:var(--muted)}
+.mini-field input{font-size:14px;padding:12px 13px;border-radius:6px}
+.github-check{min-height:34px;margin-top:2px}
+.github-check span{font-size:14px}
+.github-check span:before{width:26px;height:26px;flex-basis:26px}
+.github-status{line-height:1.45}
+.github-status.error{color:var(--danger)}
+.github-status code{background:var(--soft);border-radius:6px;padding:2px 5px;color:var(--ink)}
+@media (max-width:1060px){.github-grid{grid-template-columns:1fr}}
